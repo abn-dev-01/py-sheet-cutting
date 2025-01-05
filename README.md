@@ -8,6 +8,13 @@ This project implements an API for solving the **optimal sheet cutting problem**
 - Accepts data from Excel files in JSON format.
 - Uses the **PuLP** library for linear programming.
 
+## How to start
+
+* run Python `server.py` 
+* Edit data in `Book1.xlsm` file at `Sheet1` & `Sheet2` sheets
+* Click a button on the `Sheet1` page
+* Look at the sheet `Results` to see the results of cutting.
+
 ## Requirements
 
 ### Python Libraries:
@@ -34,6 +41,8 @@ The input JSON is expected to have data from two Excel sheets:
 |----------|--------|-------|
 | m1       | 5000   | 2700  |
 | m2       | 3000   | 2100  |
+
+Look into `Book1.xlsm` file.
 
 ## API Endpoints
 
