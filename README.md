@@ -104,6 +104,129 @@ You can test the API using tools like:
   }'
   ```
 
+## Excel Integration
+This project is designed to work seamlessly with an Excel file containing two sheets (`Sheet1` and `Sheet2`). The workflow is automated using a VBA macro to send data to the API and process the response.
+
+### VBA Macro Functionality:
+1. **Collects Data:**
+   - Reads data from `Sheet1` (details) and `Sheet2` (materials).
+2. **Formats Data into JSON:**
+   - Converts the collected data into a JSON structure that matches the API input format.
+3. **Sends JSON to the API:**
+   - Sends the formatted JSON via an HTTP POST request to `http://127.0.0.1:5000/optimize`.
+4. **Processes the API Response:**
+   - Parses the JSON response returned by the API.
+   - Writes the results to a new sheet called `Results` in the Excel file.
+
+### Example VBA Macro:
+Below is an example of the VBA macro used for integration:
+```vba
+Sub SendDataToPython()
+    Dim http As Object
+    Dim JSON As String
+    Dim Response As String
+    Dim details As String
+    Dim Materials As String
+
+    ' Collect data from Sheet1 (details)
+    details = "["
+    Dim LastRowSheet1 As Long
+    Dim i As Long
+    Dim lengthCol As Long
+    Dim widthCol As Long
+    Dim quantityCol As Long
+
+    lengthCol = 3 ' Column for "Length, mm" in Sheet1
+    widthCol = 4 ' Column for "Width, mm" in Sheet1
+    quantityCol = 5 ' Column for "Quantity" in Sheet1
+
+    LastRowSheet1 = ThisWorkbook.Sheets("Sheet1").Cells(Rows.Count, 1).End(xlUp).Row
+    For i = 2 To LastRowSheet1
+        details = details & "{""material"": """ & ThisWorkbook.Sheets("Sheet1").Cells(i, 2).Value & """, " & _
+                            ""length"": " & ThisWorkbook.Sheets("Sheet1").Cells(i, lengthCol).Value & ", " & _
+                            ""width"": " & ThisWorkbook.Sheets("Sheet1").Cells(i, widthCol).Value & ", " & _
+                            ""quantity"": " & ThisWorkbook.Sheets("Sheet1").Cells(i, quantityCol).Value & "},"
+    Next i
+    details = Left(details, Len(details) - 1) & "]"
+
+    ' Collect data from Sheet2 (materials)
+    Materials = "["
+    Dim LastRowSheet2 As Long
+    Dim j As Long
+
+    LastRowSheet2 = ThisWorkbook.Sheets("Sheet2").Cells(Rows.Count, 1).End(xlUp).Row
+    For j = 2 To LastRowSheet2
+        Materials = Materials & "{""material"": """ & ThisWorkbook.Sheets("Sheet2").Cells(j, 1).Value & """, " & _
+                                 ""length"": " & ThisWorkbook.Sheets("Sheet2").Cells(j, 2).Value & ", " & _
+                                 ""width"": " & ThisWorkbook.Sheets("Sheet2").Cells(j, 3).Value & "},"
+    Next j
+    Materials = Left(Materials, Len(Materials) - 1) & "]"
+
+    ' Combine details and materials into final JSON
+    JSON = "{""Sheet1"": " & details & ", ""Sheet2"": " & Materials & "}"
+
+    ' Display JSON for debugging purposes
+    MsgBox "Generated JSON: " & JSON, vbInformation
+
+    ' Create HTTP request to Python API
+    Set http = CreateObject("MSXML2.XMLHTTP")
+    http.Open "POST", "http://127.0.0.1:5000/optimize", False
+    http.setRequestHeader "Content-Type", "application/json"
+    http.Send JSON
+
+    ' Handle server response
+    Response = http.responseText
+
+    ' Display server response for debugging purposes
+    MsgBox "Response from server: " & Response, vbInformation
+
+    ' Write response back to Excel
+    Dim ResultsSheet As Worksheet
+    On Error Resume Next
+    Set ResultsSheet = ThisWorkbook.Sheets("Results")
+    If ResultsSheet Is Nothing Then
+        Set ResultsSheet = ThisWorkbook.Sheets.Add
+        ResultsSheet.Name = "Results"
+    Else
+        ResultsSheet.Cells.Clear
+    End If
+    On Error GoTo 0
+
+    ' Parse and write response
+    Dim JsonResponse As Object
+    Set JsonResponse = JsonConverter.ParseJson(Response)
+
+    Dim row As Long
+    row = 1
+    ResultsSheet.Cells(row, 1).Value = "Material"
+    ResultsSheet.Cells(row, 2).Value = "Sheets Required"
+    ResultsSheet.Cells(row, 3).Value = "Details"
+
+    row = 2
+    Dim item As Object
+    Dim detail As Object
+    For Each item In JsonResponse
+        ResultsSheet.Cells(row, 1).Value = item("material")
+        ResultsSheet.Cells(row, 2).Value = item("sheets_required")
+        Dim details As String
+        details = ""
+        For Each detail In item("details")
+            details = details & detail("size") & " x " & detail("count") & "; "
+        Next detail
+        ResultsSheet.Cells(row, 3).Value = details
+        row = row + 1
+    Next item
+
+    MsgBox "Results have been written to the 'Results' sheet.", vbInformation
+End Sub
+```
+
+### Example Workflow:
+1. Open the Excel file.
+2. Run the macro `SendDataToPython`.
+3. JSON data is sent to the API.
+4. Results are written back to a new sheet called `Results`.
+
 ## Code Overview
 ### Main File: `server.py`
 - **Flask** serves as the API framework.
@@ -125,5 +248,6 @@ You can test the API using tools like:
 This project is open-source and available under the [MIT License](LICENSE).
 
 ## Author
-Developed by [Your Name].
+Developed by Andrew Nikitin.
+Telegram: [@anikin_dev](https://t.me/anikin_dev)
 
